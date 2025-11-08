@@ -51,7 +51,7 @@ pipeline {
             steps {
                 echo "Running Ansible Playbook on Tools EC2..."
                 sh '''
-                    cd /home/ubuntu
+                    cd /var/lib/jenkins/workspace/deploy-nginx/
                     ansible-playbook -i inventory playbook.yaml
                 '''
             }
