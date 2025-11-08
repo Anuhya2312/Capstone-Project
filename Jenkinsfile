@@ -58,12 +58,14 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
                                           keyFileVariable: 'AWS_KEY', 
                                           usernameVariable: 'AWS_USER')]) {
-                sh """
+                sh '''
+                    echo "Using SSH key at: $AWS_KEY"
+                    chmod 600 "$AWS_KEY"
                     cd \$WORKSPACE/ansible
                     ansible-playbook -i inventory playbook.yaml \
-                    --key-file \$AWS_KEY \
-                    -u \$AWS_USER
-                """
+                    --private-key="$AWS_KEY" \
+                    -u "$AWS_USER" -vvvv
+                '''
                 }
             }
         }
