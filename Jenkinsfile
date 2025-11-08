@@ -58,14 +58,19 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
                                           keyFileVariable: 'AWS_KEY', 
                                           usernameVariable: 'AWS_USER')]) {
-                sh '''
+                sh """
                     echo "Using SSH key at: $AWS_KEY"
                     chmod 600 "$AWS_KEY"
+
+                    # Move into Ansible directory in jenkins workspace
                     cd \$WORKSPACE/ansible
+
+                    # Run Ansible Playbook using Jenkins-provided key
                     ansible-playbook -i inventory playbook.yaml \
-                    --private-key="$AWS_KEY" \
-                    -u "$AWS_USER" -vvvv
-                '''
+                        --private-key="$AWS_KEY" \
+                        -u ubuntu \
+                        -vvvv
+                """
                 }
             }
         }
