@@ -2,66 +2,53 @@ pipeline {
     agent any
 
     environment {
-        AWS_SSH_KEY = credentials('aws-ssh-key')  // SSH key for AWS EC2
-        AZURE_CRED = credentials('azure-cred')    // Username + Password for Azure
+        // These refer to the Jenkins credentials IDs you created
+        AWS_SSH = credentials('aws-ssh-key')
+        AZURE_CRED = credentials('azure-cred')
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                echo "Pulling latest code from GitHub..."
-                git branch: 'main', url: 'https://github.com/Anuhya2312/Capstone-Project.git'
+                echo "Checking out code from GitHub..."
+                git branch: 'main', url: 'https://github.com/<your-username>/capstone-project.git'
             }
         }
 
-        stage('Deploy to AWS') {
+        stage('Prepare Ansible Key') {
             steps {
-                echo "Deploying to AWS EC2..."
+                echo "Preparing AWS SSH key for Ansible..."
+                // The private key is stored temporarily in the workspace
                 sh '''
-                    scp -o StrictHostKeyChecking=no -i $AWS_SSH_KEY index-aws.html ubuntu@35.170.66.187:/home/ubuntu/
-                    ssh -o StrictHostKeyChecking=no -i $AWS_SSH_KEY ubuntu@35.170.66.187 "
-                        sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
-                        sudo cp /home/ubuntu/index-aws.html /var/www/html/index.html
-                        sudo systemctl restart nginx
-                    "
+                    echo "$AWS_SSH" > aws-key.pem || true
+                    chmod 400 aws-key.pem
+                    ls -l aws-key.pem
                 '''
             }
         }
 
-        stage('Deploy to Azure') {
+        stage('Deploy Nginx via Ansible') {
             steps {
-                echo "Deploying to Azure VM..."
+                echo "Running Ansible Playbook to deploy Nginx..."
                 sh '''
-                    sshpass -p "$AZURE_CRED_PSW" scp -o StrictHostKeyChecking=no index-azure.html azureuser@52.226.22.43:/home/azureuser/
-                    sshpass -p "$AZURE_CRED_PSW" ssh -o StrictHostKeyChecking=no azureuser@52.226.22.43 "
-                        sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
-                        sudo cp /home/azureuser/index-azure.html /var/www/html/index.html
-                        sudo systemctl restart nginx
-                    "
+                    cd ansible
+                    ansible-playbook -i inventory playbook.yaml --key-file ../aws-key.pem
                 '''
             }
         }
 
-        stage('Run Ansible Playbook') {
+        stage('Clean Up') {
             steps {
-                echo "Running Ansible Playbook on Tools EC2..."
-                withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'AWS_KEY')]) {
-                    sh '''
-                        cd /var/lib/jenkins/workspace/deploy-nginx/
-                        ansible-playbook -i inventory playbook.yaml --key-file $AWS_KEY
-                    '''
-                }
+                echo "Cleaning up temporary files..."
+                sh 'rm -f aws-key.pem'
             }
         }
     }
 
     post {
-        success {
-            echo "✅ Deployment completed successfully on both AWS and Azure!"
-        }
-        failure {
-            echo "❌ Deployment failed. Please check logs."
+        always {
+            echo "Build finished — cleaning workspace..."
+            cleanWs()
         }
     }
 }
