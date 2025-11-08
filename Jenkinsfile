@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        AWS_SSH_KEY = credentials('aws-ssh-key')  // SSH key for AWS EC2
-        AZURE_CRED = credentials('azure-cred')    // Username + Password for Azure VM
+        AWS_SSH_KEY = credentials('aws-ssh-key')  // SSH Username + private key
+        AZURE_CRED  = credentials('azure-cred')   // Username + password
     }
 
     stages {
@@ -15,18 +15,6 @@ pipeline {
             }
         }
 
-        stage('Install sshpass (if missing)') {
-            steps {
-                echo "Installing sshpass tool if not already installed..."
-                sh '''
-                    if ! command -v sshpass &> /dev/null; then
-                        apt-get update -y
-                        apt-get install -y sshpass
-                    fi
-                '''
-            }
-        }
-
         stage('Deploy to AWS') {
             steps {
                 echo "Deploying to AWS EC2..."
@@ -34,7 +22,7 @@ pipeline {
                     # Copy index-aws.html from Jenkins workspace to AWS EC2
                     scp -o StrictHostKeyChecking=no -i $AWS_SSH_KEY index-aws.html ubuntu@35.170.66.187:/home/ubuntu/
 
-                    # SSH into AWS EC2 and update Nginx web root
+                    # SSH into AWS EC2 and move it to Nginx web root
                     ssh -o StrictHostKeyChecking=no -i $AWS_SSH_KEY ubuntu@35.170.66.187 "
                         sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
                         sudo cp /home/ubuntu/index-aws.html /var/www/html/index.html
@@ -46,7 +34,7 @@ pipeline {
 
         stage('Deploy to Azure') {
             steps {
-                echo "Deploying to Azure VM using username & password..."
+                echo "Deploying to Azure VM..."
                 sh '''
                     sshpass -p "$AZURE_CRED_PSW" scp -o StrictHostKeyChecking=no index-azure.html $AZURE_CRED_USR@52.226.22.43:/home/azureuser/
 
