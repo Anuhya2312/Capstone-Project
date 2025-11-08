@@ -55,10 +55,14 @@ pipeline {
         stage('Run Ansible Playbook') {
             steps {
                 echo "Running Ansible Playbook on Tools EC2..."
+                withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
+                                          keyFileVariable: 'AWS_KEY', 
+                                          usernameVariable: 'AWS_USER')]) {
                 sh """
-                    cd /home/ubuntu
-                    ansible-playbook -i inventory playbook.yaml --key-file ~/.ssh/id_rsa
+                    cd \$WORKSPACE
+                    ansible-playbook -i inventory playbook.yaml --key-file \$AWS_KEY
                 """
+                }
             }
         }
     }
