@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        AWS_SSH_KEY = credentials('aws-ssh-key')  // Private key for AWS EC2
-        AZURE_CRED = credentials('azure-cred')    // Username + Password for Azure
+        AWS_SSH_KEY = credentials('aws-ssh-key')  // SSH key for AWS EC2
+        AZURE_CRED = credentials('azure-cred')    // Username + Password for Azure VM
     }
 
     stages {
@@ -12,6 +12,18 @@ pipeline {
             steps {
                 echo "Pulling latest code from GitHub..."
                 git branch: 'main', url: 'https://github.com/Anuhya2312/Capstone-Project.git'
+            }
+        }
+
+        stage('Install sshpass (if missing)') {
+            steps {
+                echo "Installing sshpass tool if not already installed..."
+                sh '''
+                    if ! command -v sshpass &> /dev/null; then
+                        apt-get update -y
+                        apt-get install -y sshpass
+                    fi
+                '''
             }
         }
 
@@ -26,6 +38,7 @@ pipeline {
                     ssh -o StrictHostKeyChecking=no -i $AWS_SSH_KEY ubuntu@35.170.66.187 "
                         sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
                         sudo cp /home/ubuntu/index-aws.html /var/www/html/index.html
+                        sudo systemctl restart nginx
                     "
                 '''
             }
@@ -34,17 +47,13 @@ pipeline {
         stage('Deploy to Azure') {
             steps {
                 echo "Deploying to Azure VM using username & password..."
-
-                // Install sshpass to handle password-based login
                 sh '''
-                    sudo apt-get update -y
-                    sudo apt-get install -y sshpass
-
                     sshpass -p "$AZURE_CRED_PSW" scp -o StrictHostKeyChecking=no index-azure.html $AZURE_CRED_USR@52.226.22.43:/home/azureuser/
-                    
+
                     sshpass -p "$AZURE_CRED_PSW" ssh -o StrictHostKeyChecking=no $AZURE_CRED_USR@52.226.22.43 "
                         sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
                         sudo cp /home/azureuser/index-azure.html /var/www/html/index.html
+                        sudo systemctl restart nginx
                     "
                 '''
             }
