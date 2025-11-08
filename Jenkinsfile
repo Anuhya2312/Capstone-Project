@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        AWS_SSH_KEY = credentials('aws-ssh-key')  // SSH Username + private key
-        AZURE_CRED  = credentials('azure-cred')   // Username + password
+        AWS_SSH_KEY = credentials('aws-ssh-key')  // SSH key for AWS EC2
+        AZURE_CRED = credentials('azure-cred')    // Username + Password for Azure
     }
 
     stages {
@@ -19,10 +19,7 @@ pipeline {
             steps {
                 echo "Deploying to AWS EC2..."
                 sh '''
-                    # Copy index-aws.html from Jenkins workspace to AWS EC2
                     scp -o StrictHostKeyChecking=no -i $AWS_SSH_KEY index-aws.html ubuntu@35.170.66.187:/home/ubuntu/
-
-                    # SSH into AWS EC2 and move it to Nginx web root
                     ssh -o StrictHostKeyChecking=no -i $AWS_SSH_KEY ubuntu@35.170.66.187 "
                         sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
                         sudo cp /home/ubuntu/index-aws.html /var/www/html/index.html
@@ -36,9 +33,8 @@ pipeline {
             steps {
                 echo "Deploying to Azure VM..."
                 sh '''
-                    sshpass -p "$AZURE_CRED_PSW" scp -o StrictHostKeyChecking=no index-azure.html $AZURE_CRED_USR@52.226.22.43:/home/azureuser/
-
-                    sshpass -p "$AZURE_CRED_PSW" ssh -o StrictHostKeyChecking=no $AZURE_CRED_USR@52.226.22.43 "
+                    sshpass -p "$AZURE_CRED_PSW" scp -o StrictHostKeyChecking=no index-azure.html azureuser@52.226.22.43:/home/azureuser/
+                    sshpass -p "$AZURE_CRED_PSW" ssh -o StrictHostKeyChecking=no azureuser@52.226.22.43 "
                         sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
                         sudo cp /home/azureuser/index-azure.html /var/www/html/index.html
                         sudo systemctl restart nginx
@@ -51,10 +47,11 @@ pipeline {
             steps {
                 echo "Running Ansible Playbook on Tools EC2..."
                 withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'AWS_KEY')]) {
-                sh '''
-                    cd /var/lib/jenkins/workspace/deploy-nginx/
-                    ansible-playbook -i inventory playbook.yaml --key-file $AWS_KEY
-                '''
+                    sh '''
+                        cd /var/lib/jenkins/workspace/deploy-nginx/
+                        ansible-playbook -i inventory playbook.yaml --key-file $AWS_KEY
+                    '''
+                }
             }
         }
     }
