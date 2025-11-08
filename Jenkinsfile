@@ -59,7 +59,7 @@ pipeline {
                                           keyFileVariable: 'AWS_KEY', 
                                           usernameVariable: 'AWS_USER')]) {
                 sh """
-                    cd \$WORKSPACE
+                    cd /var/lib/jenkins/workspace/deploy-nginx/ansible/
                     ansible-playbook -i inventory playbook.yaml --key-file \$AWS_KEY
                 """
                 }
