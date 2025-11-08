@@ -38,9 +38,6 @@ pipeline {
                                                  usernameVariable: 'AZURE_USER', 
                                                  passwordVariable: 'AZURE_PSW')]) {
                     sh """
-                        # Install sshpass if not installed
-                        command -v sshpass || sudo apt-get update && sudo apt-get install -y sshpass
-
                         # Copy index-azure.html to Azure VM
                         sshpass -p \$AZURE_PSW scp -o StrictHostKeyChecking=no index-azure.html \$AZURE_USER@52.226.22.43:/tmp/
 
