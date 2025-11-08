@@ -63,7 +63,7 @@ pipeline {
                     chmod 600 "$AWS_KEY"
 
                     # Move into Ansible directory in jenkins workspace
-                    cd $WORKSPACE/ansible
+                    cd $WORKSPACE
 
                     # Run Ansible Playbook using Jenkins-provided key
                     ansible-playbook -i inventory playbook.yaml \
