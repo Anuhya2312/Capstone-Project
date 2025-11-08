@@ -59,7 +59,8 @@ pipeline {
                                           keyFileVariable: 'AWS_KEY', 
                                           usernameVariable: 'AWS_USER')]) {
                 sh """
-                    echo "Using SSH key at: $AWS_KEY"
+                    echo "Using SSH key from Jenkins credentials"
+                    echo "Key path: \$AWS_KEY"
                     chmod 600 "$AWS_KEY"
 
                     # Move into Ansible directory in jenkins workspace
@@ -69,6 +70,7 @@ pipeline {
                     ansible-playbook -i inventory playbook.yaml \
                         --private-key="$AWS_KEY" \
                         -u ubuntu \
+                        -e ansible_ssh_common_args='-o StrictHostKeyChecking=no' \
                         -vvvv
                 """
                 }
