@@ -39,10 +39,10 @@ pipeline {
                                                  passwordVariable: 'AZURE_PSW')]) {
                     sh """
                         # Copy index-azure.html to Azure VM
-                        sshpass -p \$AZURE_PSW scp -o StrictHostKeyChecking=no index-azure.html \$AZURE_USER@52.226.22.43:/tmp/
+                        sshpass -p \$AZURE_PSW scp -o StrictHostKeyChecking=no index-azure.html \$AZURE_USER@172.178.18.234:/tmp/
 
                         # SSH into Azure VM and move file to Nginx directory
-                        sshpass -p \$AZURE_PSW ssh -o StrictHostKeyChecking=no \$AZURE_USER@52.226.22.43 "
+                        sshpass -p \$AZURE_PSW ssh -o StrictHostKeyChecking=no \$AZURE_USER@172.178.18.234 "
                             sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
                             sudo mv /tmp/index-azure.html /var/www/html/index.html
                             sudo systemctl restart nginx
