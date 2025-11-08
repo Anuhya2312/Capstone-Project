@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         INVENTORY = '/home/ubuntu/inventory'
-        PLAYBOOK  = '/home/ubuntu/playbook.yaml'
+        PLAYBOOK = '/home/ubuntu/playbook.yaml'
     }
 
     stages {
@@ -20,27 +20,23 @@ pipeline {
             steps {
                 echo "Deploying updated HTML files to AWS and Azure servers..."
 
-                // Inject both AWS and Azure credentials securely
                 withCredentials([
                     sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'AWS_KEY'),
-                    sshUserPrivateKey(credentialsId: 'azure-cred', keyFileVariable: 'AZURE_KEY')
+                    usernamePassword(credentialsId: 'azure-cred', usernameVariable: 'AZURE_USER', passwordVariable: 'AZURE_PASS')
                 ]) {
                     sh '''
+                        echo "✅ Using AWS key: $AWS_KEY"
+                        echo "✅ Using Azure user: $AZURE_USER"
+
                         # Ensure Ansible is installed
                         which ansible || sudo apt-get install -y ansible
 
-                        # Copy latest HTML files into Ansible folder
+                        # Copy the latest index files to Ansible folder
                         cp index-aws.html index-azure.html /home/ubuntu/ansible/
 
-                        # Run the Ansible playbook using both keys
-                        ansible-playbook -i $INVENTORY $PLAYBOOK \
-                            --private-key $AWS_KEY \
-                            --extra-vars "ansible_ssh_private_key_file=$AWS_KEY"
-
-                        # (Optional) If Azure uses a separate key
-                        ansible-playbook -i $INVENTORY $PLAYBOOK \
-                            --private-key $AZURE_KEY \
-                            --extra-vars "ansible_ssh_private_key_file=$AZURE_KEY"
+                        # Run the Ansible playbook with credentials
+                        # Note: Your inventory file should already have these details
+                        ansible-playbook -i $INVENTORY $PLAYBOOK
                     '''
                 }
             }
@@ -49,27 +45,19 @@ pipeline {
         stage('Restart Nginx') {
             steps {
                 echo "Restarting Nginx on AWS and Azure servers..."
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'aws-ssh-key', keyFileVariable: 'AWS_KEY'),
-                    sshUserPrivateKey(credentialsId: 'azure-cred', keyFileVariable: 'AZURE_KEY')
-                ]) {
-                    sh '''
-                        ansible all -i $INVENTORY -m service -a "name=nginx state=restarted" \
-                            --become --private-key $AWS_KEY || true
-                        ansible all -i $INVENTORY -m service -a "name=nginx state=restarted" \
-                            --become --private-key $AZURE_KEY || true
-                    '''
-                }
+                sh '''
+                    ansible all -i $INVENTORY -m service -a "name=nginx state=restarted" --become
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment successful — Nginx restarted on AWS and Azure!"
+            echo "✅ Deployment successful — Nginx restarted on all servers!"
         }
         failure {
-            echo "❌ Deployment failed. Check Jenkins console logs for details."
+            echo "❌ Deployment failed. Check Jenkins console logs for errors."
         }
     }
 }
