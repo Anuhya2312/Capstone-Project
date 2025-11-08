@@ -60,7 +60,9 @@ pipeline {
                                           usernameVariable: 'AWS_USER')]) {
                 sh """
                     cd \$WORKSPACE/ansible
-                    ansible-playbook -i inventory playbook.yaml --key-file \$AWS_KEY
+                    ansible-playbook -i inventory playbook.yaml \
+                    --key-file \$AWS_KEY \
+                    -u \$AWS_USER
                 """
                 }
             }
