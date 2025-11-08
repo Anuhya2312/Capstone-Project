@@ -32,7 +32,7 @@ pipeline {
                         which ansible || sudo apt-get install -y ansible
 
                         # Copy the latest index files to Ansible folder
-                        cp index-aws.html index-azure.html /home/ubuntu/ansible/
+                        cp index-aws.html index-azure.html /home/ubuntu/
 
                         # Run the Ansible playbook with credentials
                         # Note: Your inventory file should already have these details
