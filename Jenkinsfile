@@ -1,54 +1,77 @@
 pipeline {
     agent any
 
-    environment {
-        // These refer to the Jenkins credentials IDs you created
-        AWS_SSH = credentials('aws-ssh-key')
-        AZURE_CRED = credentials('azure-cred')
-    }
-
     stages {
+
         stage('Checkout Code') {
             steps {
-                echo "Checking out code from GitHub..."
-                git branch: 'main', url: 'https://github.com/<your-username>/capstone-project.git'
+                echo "Pulling latest HTML files from GitHub..."
+                git branch: 'main', url: 'https://github.com/Anuhya2312/Capstone-Project.git'
             }
         }
 
-        stage('Prepare Ansible Key') {
+        stage('Deploy to AWS') {
             steps {
-                echo "Preparing AWS SSH key for Ansible..."
-                // The private key is stored temporarily in the workspace
-                sh '''
-                    echo "$AWS_SSH" > aws-key.pem || true
-                    chmod 400 aws-key.pem
-                    ls -l aws-key.pem
-                '''
+                echo "Deploying to AWS EC2..."
+                withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh-key', 
+                                                  keyFileVariable: 'AWS_KEY', 
+                                                  usernameVariable: 'AWS_USER')]) {
+                    sh """
+                        # Copy index-aws.html to AWS EC2
+                        scp -o StrictHostKeyChecking=no -i \$AWS_KEY index-aws.html \$AWS_USER@<AWS_PUBLIC_IP>:/tmp/
+
+                        # SSH into EC2 and move the file to Nginx directory
+                        ssh -o StrictHostKeyChecking=no -i \$AWS_KEY \$AWS_USER@<AWS_PUBLIC_IP> "
+                            sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
+                            sudo mv /tmp/index-aws.html /var/www/html/index.html
+                            sudo systemctl restart nginx
+                        "
+                    """
+                }
             }
         }
 
-        stage('Deploy Nginx via Ansible') {
+        stage('Deploy to Azure') {
             steps {
-                echo "Running Ansible Playbook to deploy Nginx..."
-                sh '''
-                    cd ansible
-                    ansible-playbook -i inventory playbook.yaml --key-file ../aws-key.pem
-                '''
+                echo "Deploying to Azure VM..."
+                withCredentials([usernamePassword(credentialsId: 'azure-cred', 
+                                                 usernameVariable: 'AZURE_USER', 
+                                                 passwordVariable: 'AZURE_PSW')]) {
+                    sh """
+                        # Install sshpass if not installed
+                        command -v sshpass || sudo apt-get update && sudo apt-get install -y sshpass
+
+                        # Copy index-azure.html to Azure VM
+                        sshpass -p \$AZURE_PSW scp -o StrictHostKeyChecking=no index-azure.html \$AZURE_USER@<AZURE_PUBLIC_IP>:/tmp/
+
+                        # SSH into Azure VM and move file to Nginx directory
+                        sshpass -p \$AZURE_PSW ssh -o StrictHostKeyChecking=no \$AZURE_USER@<AZURE_PUBLIC_IP> "
+                            sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
+                            sudo mv /tmp/index-azure.html /var/www/html/index.html
+                            sudo systemctl restart nginx
+                        "
+                    """
+                }
             }
         }
 
-        stage('Clean Up') {
+        stage('Run Ansible Playbook') {
             steps {
-                echo "Cleaning up temporary files..."
-                sh 'rm -f aws-key.pem'
+                echo "Running Ansible Playbook on Tools EC2..."
+                sh """
+                    cd /home/ubuntu
+                    ansible-playbook -i inventory playbook.yaml --key-file ~/.ssh/id_rsa
+                """
             }
         }
     }
 
     post {
-        always {
-            echo "Build finished — cleaning workspace..."
-            cleanWs()
+        success {
+            echo "✅ Deployment completed successfully on both AWS and Azure!"
+        }
+        failure {
+            echo "❌ Deployment failed. Check Jenkins console logs."
         }
     }
 }
