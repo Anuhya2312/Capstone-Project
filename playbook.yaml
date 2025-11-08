@@ -1,0 +1,57 @@
+---
+# === AWS Machines ===
+- name: Install and configure Nginx on AWS instances
+  hosts: aws
+  become: yes
+  tasks:
+    - name: Update apt repo
+      apt:
+        update_cache: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Copy AWS index.html
+      copy:
+        src: index-aws.html
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Enable and start Nginx
+      service:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+
+# === Azure Machines ===
+- name: Install and configure Nginx on Azure VMs
+  hosts: azure
+  become: yes
+  tasks:
+    - name: Update apt repo
+      apt:
+        update_cache: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Copy Azure index.html
+      copy:
+        src: index-azure.html
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Enable and start Nginx
+      service:
+        name: nginx
+        state: restarted
+        enabled: yes
