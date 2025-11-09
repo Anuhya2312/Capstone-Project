@@ -18,10 +18,10 @@ pipeline {
                                                   usernameVariable: 'AWS_USER')]) {
                     sh '''
                         # Copy index-aws.html to AWS EC2
-                        scp -o StrictHostKeyChecking=no -i $AWS_KEY index-aws.html \$AWS_USER@35.170.66.187:/tmp/
+                        scp -o StrictHostKeyChecking=no -i $AWS_KEY index-aws.html \$AWS_USER@3.228.0.99:/tmp/
 
                         # SSH into EC2 and move the file to Nginx directory
-                        ssh -o StrictHostKeyChecking=no -i $AWS_KEY \$AWS_USER@35.170.66.187 "
+                        ssh -o StrictHostKeyChecking=no -i $AWS_KEY \$AWS_USER@3.228.0.99 "
                             sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
                             sudo mv /tmp/index-aws.html /var/www/html/index.html
                             sudo systemctl restart nginx
@@ -39,10 +39,10 @@ pipeline {
                                                  passwordVariable: 'AZURE_PSW')]) {
                     sh '''
                         # Copy index-azure.html to Azure VM
-                        sshpass -p $AZURE_PSW scp -o StrictHostKeyChecking=no index-azure.html $AZURE_USER@172.178.18.234:/tmp/
+                        sshpass -p $AZURE_PSW scp -o StrictHostKeyChecking=no index-azure.html $AZURE_USER@74.235.232.127:/tmp/
 
                         # SSH into Azure VM and move file to Nginx directory
-                        sshpass -p $AZURE_PSW ssh -o StrictHostKeyChecking=no $AZURE_USER@172.178.18.234 "
+                        sshpass -p $AZURE_PSW ssh -o StrictHostKeyChecking=no $AZURE_USER@74.235.232.127 "
                             sudo cp /var/www/html/index.html /var/www/html/index-backup.html || true
                             sudo mv /tmp/index-azure.html /var/www/html/index.html
                             sudo systemctl restart nginx
