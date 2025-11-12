@@ -1,0 +1,59 @@
+---
+- name: Install and start Nginx on Ubuntu servers (AWS & Azure)
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars:
+    nginx_service_name: nginx
+
+  tasks:
+    - name: Check if running on AWS
+      ansible.builtin.shell: "curl -s http://169.254.169.254/latest/meta-data/"
+      register: aws_metadata
+      ignore_errors: yes
+
+    - name: Check if running on Azure
+      ansible.builtin.shell: "curl -s -H Metadata:true 'http://169.254.169.254/metadata/instance?api-version=2021-02-01'"
+      register: azure_metadata
+      ignore_errors: yes
+
+    - name: Set cloud provider fact
+      ansible.builtin.set_fact:
+        cloud_provider: >-
+          {% if aws_metadata.rc == 0 %}
+            AWS
+          {% elif azure_metadata.rc == 0 %}
+            Azure
+          {% else %}
+            Unknown
+          {% endif %}
+
+    - name: Display detected cloud provider
+      ansible.builtin.debug:
+        msg: "Detected cloud provider: {{ cloud_provider }}"
+
+    - name: Update apt repository
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Enable and start Nginx service
+      ansible.builtin.service:
+        name: "{{ nginx_service_name }}"
+        enabled: yes
+        state: started
+
+    - name: Verify Nginx is running
+      ansible.builtin.shell: systemctl is-active nginx
+      register: nginx_status
+      changed_when: false
+
+    - name: Display Nginx status
+      ansible.builtin.debug:
+        msg: "Nginx service is {{ nginx_status.stdout }}"
